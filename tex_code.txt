@@ -1,0 +1,569 @@
+\documentclass[norsk,a4paper,12pt]{scrartcl}
+\usepackage[T1]{fontenc} %for å bruke æøå
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx} %for å inkludere grafikk
+\usepackage{verbatim} %for å inkludere filer med tegn LaTeX ikke liker
+\usepackage{mathpazo}
+\usepackage{amsfonts,amsthm}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage[english]{babel}
+\usepackage{listings}
+\usepackage{biblatex}
+\usepackage[noend]{algpseudocode}
+%\usepackage[style=numeric]{biblatex}
+%\usepackage{comment}
+\addbibresource{Reference.bib}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{rotating}
+\usepackage{mathtools}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{hyperref}
+\usepackage[linesnumbered,ruled,vlined,lined,boxed,commentsnumbered]{algorithm2e}
+\usepackage{float}
+\usepackage{minted}
+\usepackage{xcolor} % to access the named colour LightGray
+\definecolor{LightGray}{gray}{0.9}
+
+\renewcommand\qedsymbol{$\blacksquare$}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+\urlstyle{same}
+
+
+
+
+
+\begin{document}
+\title{IN5270 exam}
+\date{\today}
+
+\author{Id 15718}
+\maketitle
+
+\section{Task 1}
+
+In this task we will solve the 1D PDE given as 
+
+\begin{equation}
+    -u_{xx} + au = f(x),
+\end{equation}
+
+defined on the domain $x \in (0, L)$, where $f(x)$ is a given function and a is strictly positive. We have Neuman boundary conditions on both boundaries, i.e
+
+\begin{equation*}
+    \frac{du}{dx}\rvert_{x=0} = C, \quad \frac{du}{dx}\rvert_{x=L} = D
+\end{equation*}
+
+\subsection{a)}
+The Galerkin method minimizes the residual using projection to a function space V. Our redisual is given as 
+
+\begin{equation*}
+    R = u_{xx} - au + f(x) = 0.
+\end{equation*}
+
+Thus, using Galerkin method we get
+
+\begin{equation*}
+    (R, \psi_i) = 0, \psi_i \in V
+\end{equation*}
+
+where the parenthesis notation indicates the inner product of the two components R, v. We then get 
+
+\begin{equation*}
+    (u_{xx} - au + f(x), \psi_i) = (u_{xx}, \psi_i) - (au, \psi_i) + (f(x), \psi_i) = 0
+\end{equation*}
+
+To handle the Neuman boundary conditions we use integration by parts. Thus we get 
+
+\begin{equation*}
+\begin{aligned}
+     0 &= \int_0^L u_{xx}\psi_i\,dx - \int_0^L au \psi_i \,dx + \int_0^L f(x) \psi_i\, dx \\
+     &= -\int_0^L u_x\psi_i'\,dx + [u_x\psi_i]_0^L - \int_0^L au \psi_i \,dx + \int_0^L f(x) \psi_i\, dx.
+\end{aligned}
+\end{equation*}
+
+The Neuman boundary conditions are used is $[u_x\psi_i]_0^L$, such that we get 
+
+\begin{equation*}
+    [u_x\psi_i]_0^L = D\psi_i(L) - C\psi_i(0)
+\end{equation*}
+
+Using this as well as solving for u, we can rewrite the equation as
+
+\begin{equation}
+    \int_0^L u_x\psi_i'\,dx  + \int_0^L au \psi_i \,dx= D\psi_i(L) - C\psi_i(0)  + \int_0^L f(x) \psi_i\, dx
+\end{equation}
+
+To approximate u, we construct u using a sum of basis functions, i.e 
+\begin{equation}
+    u(x) = \sum_j c_j \psi_j.
+\end{equation}
+The number os basis functions is equal to the total number of nodes in the domain. This gives us the complete weak variational form as 
+
+\begin{equation}\label{eq:weak_var}
+   \sum_j c_j \left[ \int_0^L \psi_j'\psi_i'\,dx  + \int_0^L a\psi_j \psi_i \,dx \right]= D\psi_i(L) - C\psi_i(0)  + \int_0^L f(x) \psi_i\, dx
+\end{equation}
+
+This also gives us a set of linear algebraic equations on the form $(A\Vec{x} = \Vec{b})$, which can be solved using linear algebra. 
+
+\subsection{b)}
+From equation \ref{eq:weak_var} we see that we have a set of linear algebraic equations. This can be rewritten as a matrix equation, where we solve for the coefficients $c_j$. Here we have that 
+
+\begin{equation} \label{eq:mat_A_blob}
+    A_{i,j} = \int_0^L \left[\psi_j'\psi_i'  + a\psi_j \psi_i \right]\,dx
+\end{equation}
+
+and 
+\begin{equation}\label{eq:b_vec}
+    b_i = D\psi_i(L) - C\psi_i(0)  + \int_0^L f(x) \psi_i\, dx
+\end{equation}
+
+
+Finite element divides the domain into several elements. Each element has at a minimum two nodes, used as reference points, and each node has an associated basis function. These basis functions are used to approximate the solution locally, and then assemble the solutions together to compute the entire solution. In our case we have $N_e$ elements with size $h_e$. The advantage of computing the solution locally for each element is that the basis functions, when mapped to a local coordinate is equal to one is the node it belongs to, and zero on all other nodes. A mapping from the local domain $X \in [-1, 1]$ can be 
+
+\begin{equation}
+    x = x_m + \frac{h_e}{2}X,
+\end{equation}
+where $x_m$ is the midpoint of the element in global coordinate and $h_e$ is the element size.
+
+We will use P1 basis functions, which gives us two nodes per element. In the standardized coordinate system we have that the basis functions are defined as 
+
+\begin{equation}
+    \Tilde{\phi}_0 = \frac{1}{2}(1-X)
+\end{equation}
+\begin{equation}
+    \Tilde{\phi}_1 = \frac{1}{2}(1+X)
+\end{equation}
+
+Now, we want to go from the global $A_{i, j} \to \Tilde{A}_{r,s}^e$, where r,s are local coordinates in the given element e. I.e we need to compute 
+
+\begin{equation}
+    \Tilde{A}^e = 
+    \begin{bmatrix}
+    (\Tilde{\phi}_{0,x}, \Tilde{\phi}_{0,x} ) + a(\Tilde{\phi}_0, \Tilde{\phi}_0 ) & (\Tilde{\phi}_{0,x}, \Tilde{\phi}_{1,x})+ a(\Tilde{\phi}_0, \Tilde{\phi}_1 ) \\
+    (\Tilde{\phi}_{1,x}, \Tilde{\phi}_{0,x})+ a(\Tilde{\phi}_1, \Tilde{\phi}_0 ) & (\Tilde{\phi}_{1,x},\Tilde{\phi}_{1,x}) + a(\Tilde{\phi}_1, \Tilde{\phi}_1 )
+    \end{bmatrix}
+\end{equation}
+
+Here the subindex of x denotes the derivative with respect to x. Note here that the inner product is now defined over the local domain $X \in [-1,1]$, so to transform $dx \to dX$ we need to multiply the integrand with the jacobi determinant, which here is $det J = h_e/2$. We also need to convert the derivative of the basis functions from $d/dx \to d/dX$. To do this we note that 
+
+\begin{equation*}
+    \frac{d \tilde{\phi}_r}{dx} = \frac{d\tilde{\phi}_r}{dX} \frac{dX}{dx} = \frac{2}{h_e} \frac{d\tilde{\phi}_r}{dX}
+\end{equation*}
+
+Thus, for a given element in the local matrix $A^e$ we need to calculate
+
+\begin{equation}\label{eq:local_mat_rs_calc}
+    A_{r,s}^{e} = \int_{-1}^1 \left[ \frac{4}{h_e^2}\frac{d\tilde{\phi}_r}{dX}\frac{d\tilde{\phi}_s}{dX} + a\tilde{\phi}_r\tilde{\phi}_s \right]\frac{h_e}{2}\, dX
+\end{equation}
+
+so our final element matrix $\Tilde{A}^e$ is
+
+\begin{equation}\label{eq:A_e}
+    \Tilde{A}^e = 
+    \begin{bmatrix}
+    \frac{1}{h_e} + \frac{ah_e}{3} & -\frac{1}{h_e} + \frac{ah_e}{6} \\
+     -\frac{1}{h_e} + \frac{ah_e}{6} & \frac{1}{h_e} + \frac{ah_e}{3}
+    \end{bmatrix}
+\end{equation}
+
+\subsection{c)}
+%Note since we have neuman conditions on both boundaries, we can use the same matrix for both end points, only changing h_e to h_0 and h_N_e-1
+
+Given that we have Neuman condition on both sides of the domain, the element matrix only changes the size of the element, i.e for the left most element we have 
+
+\begin{equation}
+    \Tilde{A}^0 = 
+    \begin{bmatrix}
+    \frac{1}{h_0} + \frac{ah_0}{3} & -\frac{1}{h_0} + \frac{ah_0}{6} \\
+     -\frac{1}{h_0} + \frac{ah_0}{6} & \frac{1}{h_0} + \frac{ah_0}{3}
+    \end{bmatrix},
+\end{equation}
+
+and for the rightmost element we have 
+
+\begin{equation}
+    \Tilde{A}^{N_e-1} = 
+    \begin{bmatrix}
+    \frac{1}{h_{N_e-1}} + \frac{ah_{N_e-1}}{3} & -\frac{1}{h_{N_e-1}} + \frac{ah_e}{6} \\
+     -\frac{1}{h_{N_e-1}} + \frac{ah_{N_e-1}}{6} & \frac{1}{h_{N_e-1}} + \frac{ah_{N_e-1}}{3}
+    \end{bmatrix}.
+\end{equation}
+
+The element vectors for the leftmost and rightmost element is defined from equation \ref{eq:b_vec}. We note here that the Neuman boundary criteria is upheld if 
+
+\begin{equation*}
+\begin{aligned}
+     &\phi_{i}(L) = \begin{cases}
+          1 \quad &\text{if} \, i = N_e-1 \\
+          0 \quad &\text{else} \\
+     \end{cases}\\
+    &\phi_{i}(0) = \begin{cases}
+          1 \quad &\text{if} \, i = 0 \\
+          0 \quad &\text{else} \\
+     \end{cases}
+\end{aligned}
+\end{equation*}
+
+thus the generalized b vector can be written as 
+
+\begin{equation*}
+    b_r^e = \frac{h_e}{2}\int_{-1}^1 f(x(X))\tilde{\phi}_r(X) + D\delta_{e,N_e-1}\delta_{r, 1} - C\delta_{e,0}\delta_{r, 0}
+\end{equation*}
+
+Using this we thus get that for the leftmost element we have that 
+
+\begin{equation*}
+    b^{0} = 
+    \begin{bmatrix}
+    -C + \frac{h_{0}}{2}\int_{-1}^1 f(x(X))\tilde{\phi}_0\, dX \\
+    \frac{h_{0}}{2}\int_{-1}^1 f(x(X))\tilde{\phi}_1\, dX \\
+    \end{bmatrix}.
+\end{equation*}
+
+
+
+and for the rightmost element we have 
+
+\begin{equation*}
+    b^{N_e-1} = 
+    \begin{bmatrix}
+    \frac{h_{N_e-1}}{2}\int_{-1}^1 f(x(X))\tilde{\phi}_0\, dX \\
+    D + \frac{h_{N_e-1}}{2}\int_{-1}^1 f(x(X))\tilde{\phi}_1\, dX \\
+    \end{bmatrix}
+\end{equation*}
+
+\subsection{d)}
+The number of rows in a matrix is determined by the number of elements and the choice of basis functions. We have $N_e$ elements and uses P1 basis functions, thus each element has two nodes. We thus have that the element matrix A has $N_e+1$ rows and $N_e+1$ columns. The number of non-zero elements in the matrix is given by $N_z = 2 + (N_{e}-1)*3 + 2$. This can be shown visually in table \ref{tab:A}
+
+\begin{table}[h]
+\begin{tabular}{lllll}
+\cline{1-2}
+\multicolumn{1}{|l}{$*$}  & \multicolumn{1}{l|}{$*$} & $0$                      & $0$                      & $0$                      \\ \cline{2-3}
+\multicolumn{1}{|l|}{$*$} & \multicolumn{1}{l|}{$*$} & \multicolumn{1}{l|}{$*$} & $0$                      & $0$                      \\ \cline{1-4}
+\multicolumn{1}{l|}{$0$}  & \multicolumn{1}{l|}{$*$} & \multicolumn{1}{l|}{$*$} & \multicolumn{1}{l|}{$*$} & $0$                      \\ \cline{2-5} 
+$0$                       & \multicolumn{1}{l|}{$0$} & \multicolumn{1}{l|}{$*$} & \multicolumn{1}{l|}{$*$} & \multicolumn{1}{l|}{$*$} \\ \cline{3-4}
+$0$                       & $0$                      & \multicolumn{1}{l|}{$0$} & $*$                      & \multicolumn{1}{l|}{$*$} \\ \cline{4-5} 
+\end{tabular}
+\caption{Table showing the assembly of the element matrices into the global A matrix}
+\label{tab:A}
+\end{table}
+
+Each row represents each node. For the first node we have 2 contributions, from the inner product of $\tilde{\phi}_0$ with it self and the inner product between $\tilde{\phi}_0$ and $\tilde{\phi}_1$. The next $N_e-2$ rows has 3 contributions, given that they are boundary nodes between two elements. Thus each node will have two contributions from the basis functions in its own element, and one contribution from the inner product of the basis node and the basis function connected to it from the next element. The last row has two contributions, with the same calculations as for the first row. Thus the number of non-zero rows is $N_z = 2 + (N_{e}-1)*3 + 2$.
+
+The total A matrix can be assembled as shown in table \ref{tab:A}, and the values for each non-zero element has been calculated in equation \ref{eq:A_e}. Thus for a given row i in the interior points we have that 
+
+\begin{equation}
+\begin{aligned}
+        A_{i,i-1} &= \tilde{A}_{1,0}^{i-1} = \frac{ah_{i-1}}{6} - \frac{1}{h_{i-1}}\\
+        A_{i,i} &= \tilde{A}_{1,1}^{i-1} + \tilde{A}_{0,0}^{i} = \frac{ah_{i-1}}{3} + \frac{1}{h_{i-1}} + \frac{ah_{i}}{3} + \frac{1}{h_{i}}\\
+        A_{i,i+1} &=\tilde{A}_{0,1}^{i} = \frac{ah_{i}}{6} - \frac{1}{h_{i}}.
+\end{aligned}
+\end{equation}
+
+The boundaries are given as 
+
+\begin{equation}
+\begin{aligned}
+        A_{0,0} &= \frac{ah_{0}}{6} - \frac{1}{h_{0}}\\
+        A_{0,1} &=  \frac{ah_{0}}{3} + \frac{1}{h_{0}} 
+\end{aligned}
+\end{equation}
+and 
+\begin{equation}
+\begin{aligned}
+        A_{N_e,N_e-1} &=  \frac{ah_{N_e-1}}{3} + \frac{1}{h_{N_e-1}}\\
+        A_{N_e,N_e} &=  \frac{ah_{N_e-1}}{6} - \frac{1}{h_{N_e-1}} 
+\end{aligned}
+\end{equation}
+
+
+\subsection{e)}
+We now change the left boundary condition to a so called Robin condition, given as 
+
+\begin{equation}
+    u_x = r(u-B),
+\end{equation}
+
+where r, B are real scalars. The weak variational form from equation \ref{eq:weak_var} with the Robin condition is thus.
+
+\begin{equation}\label{eq:weak_var}
+   \sum_j c_j \left[ \int_0^L \psi_j'\psi_i'\,dx  + \int_0^L a\psi_j \psi_i \,dx \right]= D\psi_i(L) - r(\sum_j c_j \psi_j(0) - B)\psi_i(0)  + \int_0^L f(x) \psi_i\, dx.
+\end{equation}
+
+Rewritten, the new weak variational form is given as 
+
+\begin{equation}\label{eq:weak_var}
+   \sum_j c_j \left[ \int_0^L \psi_j'\psi_i'\,dx  + \int_0^L a\psi_j \psi_i \,dx + r\psi_j(0)\psi_i(0)\right]= D\psi_i(L) + rB\psi_i(0)  + \int_0^L f(x) \psi_i\, dx.
+\end{equation}
+
+From this equation we see that our global matrix A will add in a contribution of r in the upper left most matrix element, since $\psi_j(0)$ and $\psi_i(0)$ are 1 in only the first node, and zero elsewhere. The global b vector will add in a contribution of $rB$ in the first vector element for the same reason as just mentioned. 
+
+
+\section{Task 2}
+In this task we will look at a 2D diffusion equation, given as 
+
+\begin{equation}
+    \frac{\partial u}{\partial t} = \kappa \left[ \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} \right] + f(u)
+\end{equation}
+
+defined on the domain $(x,y) \in \Omega = (0,1)^2$, with $t\in(0, T]$. The initial condition is given as 
+
+\begin{equation*}
+    u(x,y,0) = I(x,y)
+\end{equation*}
+
+and the boundary condition is given as the Neuman condition on all boundaries, i.e
+
+\begin{equation*}
+    \frac{\partial u}{\partial n} = 0, \quad x=0, \quad x=1, \quad y=0, \quad y=1.
+\end{equation*}
+
+
+
+\subsection{a)}
+
+We will now use Backward Euler to discretize the time dependent part of the PDE. We will use the notation that $u(t_0 +\Delta t*n) = u^n$. We then have
+
+\begin{equation}
+    \frac{u^{n+1}-u^n}{\Delta t} = \kappa \left[ \frac{\partial^2 u^{n+1}}{\partial x^2} + \frac{\partial^2 u^{n+1}}{\partial y^2} \right] + f(u^{n+1})
+\end{equation}
+
+\subsection{b)}
+To find the system of nonlinear algebraic equations we first need to discretize the second derivative with respect to x and y. Here we will use center difference method:
+
+\begin{equation}
+    \frac{u_{i,j}^{n+1}-u_{i,j}^n}{\Delta t} = \kappa \left[ \frac{ u_{i+1,j}^{n+1} -2u_{i,j}^{n+1} + u_{i-1,j}^{n+1}}{\Delta x^2} + \frac{ u_{i,j+1}^{n+1} -2u_{i,j}^{n+1} + u_{i,j-1}^{n+1} }{\Delta y^2} \right] + f(u_{i,j}^{n+1})
+\end{equation}
+
+This is thus the system of nonlinear algebraic equations for all i,j,n in their respective domains. Each equation is given as equation above, and there are $(N_x+1)\times (N_y+1)\times N_t$ equations. This is because we need to calculate the Neuman boundary conditions for each time step, as well as the internal points in space. We have an initial condition for the system as well, thus we only need to iterate over $N_t$ temporal points. Here $i \in \{0,1,...,N_x\}$ and $j\in \{0, 1, ...., N_y\}$. This will result in the use of ghost points at the boundary.
+
+\subsection{c)}
+Picard iterations introduce a new function $\tilde{F}(u) \approx F(u)$ to handle the non-linear terms of the equation. Here $F(u)$ is the residual of the function, i.e all terms moved to one side. In our case, we approximate the non-linear function $f(u)$ such that it is linear, but as without as much change as possible. If, for example, $f(u) = u^2$ we would approximate this as $\tilde{f}(u) = u^-u$. A crude approximation would instead be to simply use $u^-$ for u. This would be necessary in the case of $f(u) = \sin{(u)} \approx \sin{(u^-)}$.\par 
+Then we solve the equation for a given time step, use the new solution as the new $u^-$ until we reach a satisfying approximation for the non-linear term. This stopping criteria can for instance be if the current and previous solution has an absolute difference lower than a given tolerance, i.e $\mid u-u^-\mid \leq \epsilon_u$, or if the absolute value of the approximated residual is lower than a given tolerance, i.e $\mid \tilde{F}(u)\mid < \epsilon_r$. The only way to solve this as a matrix equation is in the crude case, where we approximate all of $f(u)$. Then we do not get a dependence of $u^(n+1)$ in the b vector, and thus it can be solved as a matrix equation. We have several unknowns:
+
+\begin{equation}
+    \frac{u_{i,j}^{n+1}}{\Delta t}- \kappa \left[ \frac{ u_{i+1,j}^{n+1} -2u_{i,j}^{n+1} + u_{i-1,j}^{n+1}}{\Delta x^2} + \frac{ u_{i,j+1}^{n+1} -2u_{i,j}^{n+1} + u_{i,j-1}^{n+1} }{\Delta y^2} \right]= \frac{u_{i,j}^n}{\Delta t}   + \tilde{f}(u^-)
+\end{equation}
+
+To save space, we define two new constants $C_1, C_2$, where 
+\begin{equation*}
+    C_1 =  \frac{\Delta t}{\Delta x^2}
+\end{equation*}
+
+\begin{equation*}
+    C_2 = \frac{\Delta}{\Delta y^2}
+\end{equation*}
+
+so our equation is thus 
+
+\begin{equation}
+    u_{i,j}^{n+1}(1+2\kappa C_1 + 2\kappa C_2) - \kappa C_1(u_{i+1, j}^{n+1} + u_{i-1, j}^{n+1}) - \kappa C_2(u_{i, j+1}^{n+1} + u_{i, j-1}^{n+1})= u_{i,j}^n   + \tilde{f}(u^-)\Delta t
+\end{equation}
+
+Given that we have two grids, one for x and y, we now have to solve for all combinations of $u_{i,j}$, such that
+
+\begin{equation*}
+        x = \begin{bmatrix}
+    
+    u_{0, 0}\\
+    u_{1, 0}\\
+    \vdots\\
+    u_{N_x, 0}
+    \\
+    
+    u_{0, 1}\\
+    u_{1, 1}\\
+    \vdots\\
+    u_{N_x, 1}\\
+    \vdots \\
+    u_{0, N_y}\\
+    u_{1, N_y}\\
+    \vdots\\
+    u_{N_x, N_y}
+    \end{bmatrix}.
+\end{equation*}
+where x is $(N_x+1)(N_y+1)$ long, and $u_{i,j} = u_{i,j}^{n+1}$. 
+
+The total matrix is too large to write out, so here is a $3x3$ example. This placement applies for bigger grids aswell. To save space we define $(1 + 2\kappa C_2 + 2\kappa C_1) = Y$. Thus our matrix A is given as 
+
+\begin{align*}
+  \renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+  A=\left[\begin{array}{ccccccccc}
+Y & -\kappa C_1 & 0 & -\kappa C_2 & 0 & 0 & 0 & 0 & 0 \\
+-\kappa C_1 & Y & -\kappa C_1 & 0 & -\kappa C_2 & 0 & 0 & 0 & 0 \\
+0 & -\kappa C_1 & Y & 0 & 0 & -\kappa C_2 & 0 & 0 & 0 \\
+-\kappa C_2 & 0 & 0 & Y & -\kappaC_1 & 0 & -\kappa C_2 & 0 & 0 \\
+0 & -\kappa C_2 & 0 & -\kappa C_1 & Y & -\kappa C_1 & 0 & -\kappa C_2 & 0 \\
+0 & 0 &-\kappa C_2 & 0 & -\kappa C_1 & Y & 0 & 0 & -\kappa C_2 \\
+0 & 0 & 0 & -\kappa C_2 & 0 & 0 & Y & -\kappa C_1 & 0 \\
+0 & 0 & 0 & 0 & -\kappa C_2 & 0 & -\kappa C_1 & Y & -\kappa C_1 \\
+0 & 0 & 0 & 0 & 0 & -\kappa C_2 & 0 & -\kappa C_1 & Y
+\end{array}\right]
+\end{align*}
+
+This can be generalized to $(N_x+1)(N_y+1)$ rows and columns. One must however be careful with the matrix elements corresponding to where the index reverts back. In other words
+
+\begin{equation*}
+        x = \begin{bmatrix}
+    \vdots\\
+    u_{N_x, 0}\\
+    u_{0, 1}\\
+    \vdots\\
+    \end{bmatrix}.
+\end{equation*}
+Here one needs to be aware of the $i,j \pm 1$ and which constant that will contribute.
+
+In the $3x3$ case, our x vector is given as 
+
+\begin{equation*}
+\renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+    x = \left[\begin{array}{c}
+    u_{0, 0}\\
+    u_{1, 0}\\
+    u_{2,0}\\
+    u_{0,1}\\
+    u_{1,1}\\
+    u_{2,1}\\
+    u_{0,2}\\
+    u_{1,2}\\
+    u_{2,2}\\
+\end{array}\right]
+\end{equation*}
+and b vector is given as 
+\begin{equation*}
+\renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+    b = \left[\begin{array}{c}
+    u_{0, 0}^p + f(u_{0,0}^p)\\
+    u_{1, 0}^p+ f(u_{1,0}^p)\\
+    u_{2,0}^p+ f(u_{2,0}^p)\\
+    u_{0,1}^p+ f(u_{0,1}^p)\\
+    u_{1,1}^p+ f(u_{1,1}^p)\\
+    u_{2,1}^p+ f(u_{1,2}^p)\\
+    u_{0,2}^p+ f(u_{0,2}^p)\\
+    u_{1,2}^p+ f(u_{1,2}^p)\\
+    u_{2,2}^p+ f(u_{2,2}^p)\\
+\end{array}\right]
+\end{equation*}
+
+
+where $u_{i, j}^p$ is the notation used for the previous timestep.
+
+\subsection{d)}
+Newton's method is originally a method to find a function's root. In our case, that function is the residual $F(u)$, and the root is the approximated value $u^-$ that most satisfies the original problem. In this case we have that 
+
+\begin{equation}
+    F(u) = -\frac{u_{i,j}^{n+1}-u_{i,j}^n}{\Delta t}+ \kappa \left[ \frac{ u_{i+1,j}^{n+1} -2u_{i,j}^{n+1} + u_{i-1,j}^{n+1}}{\Delta x^2} + \frac{ u_{i,j+1}^{n+1} -2u_{i,j}^{n+1} + u_{i,j-1}^{n+1} }{\Delta y^2} \right] + f(u_{i,j}^{n+1})
+\end{equation}
+
+Newton's method will thus be 
+
+\begin{equation*}
+\begin{aligned}
+    u^{n+1, k+1}_{i,j} &= u^{-, k} - \frac{F(u^{-,k})}{F'(u^{-,k})} \\
+    u^{n+1}_{i,j} &= u^- - \frac{ -u^- + u_{i,j}^n + \kappa C_1( u_{i+1,j}^{n+1} -2u^{-}+ u_{i-1,j}^{n+1} ) + \kappa C_2(u_{i,j+1}^{n+1} -2u^{-}+ u_{i,j-1}^{n+1}) + f(u^-)\Delta t }{ -1 -2\kappa C_1 - 2\kappa C_2 + f'(u^-)\Delta t }
+\end{aligned}
+\end{equation*}
+
+For convenience I drop the k index in the second line in the equation above. This equation we be calculated K times until we reach a satisfied solution for that time step. For the next step, the first $u^-$ will be set to the previous time step final solution, i.e $u^{-, k=0} = u^{n}$. This is repeated for all $N_t$ time steps.\par 
+The system of linear algebraic equations can then be written as a matrix equation. Lets start by first defining $\xi = -1 -2\kappa C_1 - 2\kappa C_2 + f'(u^-)\Delta t$. Then we gather all the unknowns on the left side:
+
+\begin{equation*}
+    u_{i,j}^{n+1}\xi + \kappa C_1(u_{i+1,j}^{n+1} + u_{i-1,j}^{n+1}) + \kappa C_2(u_{i,j+1}^{n+1} + u_{i,j-1}^{n+1}) = u^-\xi -Yu^- - u_{i,j}^n + f(u^-)\Delta t
+\end{equation*}
+
+where Y is the same as in task 2c. Note here that $\xi - D = f'(u^-)$, so we then get 
+
+\begin{equation*}
+    u_{i,j}^{n+1}\xi + \kappa C_1(u_{i+1,j}^{n+1} + u_{i-1,j}^{n+1}) + \kappa C_2(u_{i,j+1}^{n+1} + u_{i,j-1}^{n+1}) = -u^-f'(u^-) - u_{i,j}^n + f(u^-)\Delta t
+\end{equation*}
+
+In the $3x3$ case, our A matrix and x, b vector are given as 
+
+\begin{align*}
+  \renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+  A=\left[\begin{array}{ccccccccc}
+\xi & \kappa C_1 & 0 & \kappa C_2 & 0 & 0 & 0 & 0 & 0 \\
+\kappa C_1 & \xi & \kappa C_1 & 0 & \kappa C_2 & 0 & 0 & 0 & 0 \\
+0 & \kappa C_1 & \xi & 0 & 0 & \kappa C_2 & 0 & 0 & 0 \\
+\kappa C_2 & 0 & 0 & \xi & \kappa C_1 & 0 & \kappa C_2 & 0 & 0 \\
+0 & \kappa C_2 & 0 & \kappa C_1 & \xi & \kappa C_1 & 0 & \kappa C_2 & 0 \\
+0 & 0 & \kappa C_2 & 0 & \kappa C_1 & \xi& 0 & 0 & \kappa C_2 \\
+0 & 0 & 0 & \kappa C_2 & 0 & 0 & \xi & \kappa C_1 & 0 \\
+0 & 0 & 0 & 0 & \kappa C_2 & 0 & \kappa C_1 & \xi & \kappa C_1 \\
+0 & 0 & 0 & 0 & 0 & \kappa C_2 & 0 & \kappa C_1 & \xi
+\end{array}\right]
+\end{align*}
+
+\begin{equation*}
+\renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+    x = \left[\begin{array}{c}
+    u_{0, 0}\\
+    u_{1, 0}\\
+    u_{2,0}\\
+    u_{0,1}\\
+    u_{1,1}\\
+    u_{2,1}\\
+    u_{0,2}\\
+    u_{1,2}\\
+    u_{2,2}\\
+\end{array}\right]
+\end{equation*}
+Here we use the notation that $u_{i,j} = u_{i,j}^{n+1}$. 
+\begin{equation*}
+\renewcommand{\arraystretch}{1.5}
+  \setlength{\arraycolsep}{6pt}
+    b = \left[\begin{array}{c}
+    -f'(u_{0,0}^p)u_{0,0}^p - u_{0, 0}^p + f(u_{0,0}^p)\\
+    -f'(u_{1,0}^p)u_{01,0}^p - u_{1, 0}^p+ f(u_{1,0}^p)\\
+    -f'(u_{2,0}^p)u_{2,0}^p -u_{2,0}^p+ f(u_{2,0}^p)\\
+    -f'(u_{0,1}^p)u_{0,1}^p - u_{0,1}^p+ f(u_{0,1}^p)\\
+    -f'(u_{1,1}^p)u_{1,1}^p -u_{1,1}^p+ f(u_{1,1}^p)\\
+    -f'(u_{2,1}^p)u_{2,1}^p -u_{2,1}^p+ f(u_{1,2}^p)\\
+    -f'(u_{0,2}^p)u_{0,2}^p -u_{0,2}^p+ f(u_{0,2}^p)\\
+    -f'(u_{1,2}^p)u_{1,2}^p -u_{1,2}^p+ f(u_{1,2}^p)\\
+    -f'(u_{2,2}^p)u_{2,2}^p -u_{2,2}^p+ f(u_{2,2}^p)\\
+\end{array}\right]
+\end{equation*}
+
+This can again be generalized to $(N_x+1)(N_y+1)$ rows and columns.
+
+
+\subsection{e)}
+To find the ideal values for $\Delta y$, $\Delta x$ and $\Delta t$ we will perform a gridsearch. There are an assumption we need to make here. Even though the task claims that the spacial grid can be of different size, we assume that they are the same. Next we need an estimate of how long the computation will take. We know that our computation should take S hours, given that our friend's computer is S times faster, and he has 1 hour of computation time. We also know that this should be equal to the time each time step computation takes. Thus we have
+
+\begin{equation*}
+    T_{tot} = T_{friend}S = T_{\Delta t}N_t = \frac{T_{\Delta t}T_{sim}}{\Delta t}
+\end{equation*}
+
+The time each time step takes to compute is dependent on the grid size of the matrix inversion, as well as the number of iterations from Newton's method. This relation is given as 
+
+\begin{equation*}
+    T_{\Delta t} = T_{A_{inv}}(\Delta x, \Delta y)k,
+\end{equation*}
+
+where $T_{A_{inv}}$ is the time it takes to invert the matrix A. Now, we first need to estimate $T_{A_{inv}}$. We know that it is proportional to $\Delta x$, and thus also $\Delta y$, i.e $T_{A_{inv}} =U \Delta x^{\gamma}$. To find these two parameters we first calculate the time it takes to calculate each grid for varying grid sizes and create a log log plot. $\gamma$ will then be the time convergence. Having found a term for $T_{A_{inv}}$, allows us to narrow the grid search down. We have that 
+
+\begin{equation}\label{eq:find_k}
+    k =\frac{T_{sim}}{T_{friend}S\Delta t}U\Delta x^{\gamma}
+\end{equation}
+
+Our problem has now been reduced to a problem with two unknowns, $\Delta x$ and $\Delta t$. Picking a combination of the two gives us via equation \ref{eq:find_k} the number of iterations for Newton's method. With these three variables we can calculate the error. Now if we have an exact solution, we could just use the L2 norm to estimate the error. If we however do not have an exact solution we will have to use mean squared error of the residual as a measure of the error. Here we get a resulting global minimum problem, where the minimum gives us the ideal $\Delta t$, k and $\Delta x = \Delta y$. Note that this would take a very long time to compute in its entirety. To reduce the computation time, we could cut off the calculation at a given time step, and assume that the error would not suddenly increase in the calculations after.  
+
+
+\end{document}
